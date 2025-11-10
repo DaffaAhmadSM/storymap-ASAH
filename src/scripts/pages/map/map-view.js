@@ -1,3 +1,5 @@
+import idbHelper from "../../utils/idb-helper.js";
+
 class MapView {
   constructor() {
     this.map = null;
@@ -7,6 +9,10 @@ class MapView {
     this.isSelectingLocation = false;
     this.markers = {};
     this.highlightedMarker = null;
+    this.allStories = []; // Store all stories for filtering
+    this.currentFilter = "all";
+    this.currentSort = "newest";
+    this.searchQuery = "";
   }
 
   getLoadingElement() {
@@ -859,11 +865,39 @@ class MapView {
     const sidebar = this.getStoryListSidebar();
     if (!sidebar) return;
 
+    // Store all stories for filtering
+    this.allStories = stories || [];
+
     let html =
       '<button id="toggle-sidebar-btn" class="toggle-sidebar-btn" title="Toggle stories sidebar" aria-label="Toggle stories sidebar" aria-expanded="true" aria-controls="story-list-sidebar-id">✕</button>';
     html += '<div class="story-list-content">';
     html += "<h3>Stories</h3>";
 
+    // Search, Filter, and Sort Controls
+    html += '<div class="story-controls">';
+    html += '  <div class="search-box">';
+    html +=
+      '    <input type="search" id="story-search" class="story-search-input" placeholder="Search stories...">';
+    html += "  </div>";
+    html += '  <div class="filter-buttons">';
+    html +=
+      '    <button class="filter-btn active" data-filter="all">All</button>';
+    html +=
+      '    <button class="filter-btn" data-filter="with-location">With Location</button>';
+    html +=
+      '    <button class="filter-btn" data-filter="without-location">No Location</button>';
+    html += "  </div>";
+    html += '  <div class="sort-box">';
+    html += '    <label for="story-sort">Sort: </label>';
+    html += '    <select id="story-sort" class="story-sort-select">';
+    html += '      <option value="newest">Newest First</option>';
+    html += '      <option value="oldest">Oldest First</option>';
+    html += '      <option value="name-asc">Name (A-Z)</option>';
+    html += '      <option value="name-desc">Name (Z-A)</option>';
+    html += "    </select>";
+    html += "  </div>";
+    html += "</div>";
+    html += '<div id="filtered-stories-container">';
     // All stories
     if (stories && stories.length > 0) {
       html += '<section class="story-section" aria-label="All stories">';
@@ -879,6 +913,7 @@ class MapView {
 
     if (!stories || stories.length === 0) {
       html += '<p class="no-stories" role="status">No stories available</p>';
+      html += "</div>"; // Close filtered-stories-container
     }
 
     html += "</div>";
@@ -886,6 +921,7 @@ class MapView {
 
     // Add click listeners
     this.attachStoryListListeners();
+    this.attachStoryControlsListeners();
   }
 
   /**
@@ -953,6 +989,122 @@ class MapView {
         }
       });
     });
+  }
+
+  /**
+   * Attach listeners for search, filter, and sort controls
+   */
+  attachStoryControlsListeners() {
+    // Search input
+    const searchInput = document.getElementById("story-search");
+    if (searchInput) {
+      let searchTimeout;
+      searchInput.addEventListener("input", (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          this.searchQuery = e.target.value.toLowerCase();
+          this.updateFilteredStories();
+        }, 300); // Debounce 300ms
+      });
+    }
+
+    // Filter buttons
+    const filterButtons = document.querySelectorAll(".filter-btn");
+    filterButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        // Update active state
+        filterButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        // Update filter and refresh
+        this.currentFilter = btn.dataset.filter;
+        this.updateFilteredStories();
+      });
+    });
+
+    // Sort dropdown
+    const sortSelect = document.getElementById("story-sort");
+    if (sortSelect) {
+      sortSelect.addEventListener("change", (e) => {
+        this.currentSort = e.target.value;
+        this.updateFilteredStories();
+      });
+    }
+  }
+
+  /**
+   * Update filtered and sorted stories based on current filters
+   */
+  async updateFilteredStories() {
+    try {
+      // Determine hasLocation filter
+      let hasLocation = null;
+      if (this.currentFilter === "with-location") {
+        hasLocation = true;
+      } else if (this.currentFilter === "without-location") {
+        hasLocation = false;
+      }
+
+      // Parse sort option
+      let sortBy = "createdAt";
+      let order = "desc";
+      if (this.currentSort === "newest") {
+        sortBy = "newest";
+        order = "desc";
+      } else if (this.currentSort === "oldest") {
+        sortBy = "oldest";
+        order = "asc";
+      } else if (this.currentSort === "name-asc") {
+        sortBy = "name";
+        order = "asc";
+      } else if (this.currentSort === "name-desc") {
+        sortBy = "name";
+        order = "desc";
+      }
+
+      // Query stories with filters
+      const filteredStories = await idbHelper.queryStories({
+        search: this.searchQuery || null,
+        hasLocation,
+        sortBy,
+        order,
+      });
+      console.log(sortBy);
+
+      // Re-render the filtered stories
+      this.renderFilteredStories(filteredStories);
+    } catch (error) {
+      console.error("Error filtering stories:", error);
+    }
+  }
+
+  /**
+   * Render only the filtered stories section
+   */
+  renderFilteredStories(stories) {
+    const container = document.getElementById("filtered-stories-container");
+    if (!container) return;
+
+    let html = "";
+
+    if (stories && stories.length > 0) {
+      html += '<section class="story-section" aria-label="Filtered stories">';
+      html += `<h4><span class="location-icon" aria-hidden="true">📖</span>All Stories (${stories.length})</h4>`;
+      html += '<ul role="list" class="story-list">';
+      stories.forEach((story) => {
+        html += this.createStoryListItem(story);
+      });
+      html += "</ul>";
+      html += "</section>";
+    } else {
+      html +=
+        '<p class="no-stories" role="status">No stories match your filters</p>';
+    }
+
+    container.innerHTML = html;
+
+    // Re-attach story item listeners
+    this.attachStoryListListeners();
   }
 
   /**

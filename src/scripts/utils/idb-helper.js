@@ -457,7 +457,7 @@ function sortStories(stories, sortBy = "date", order = "desc") {
       sorted.sort((a, b) => {
         const dateA = new Date(a.createdAt);
         const dateB = new Date(b.createdAt);
-        return dateA - dateB;
+        return order === "asc" ? dateA - dateB : dateB - dateA;
       });
       break;
 
@@ -491,10 +491,14 @@ async function queryStories(options = {}) {
     }
 
     // Apply filters
-    if (options.hasLocation !== undefined) {
-      stories = stories.filter(
-        (story) => story.hasLocation === options.hasLocation
-      );
+    if (options.hasLocation !== null) {
+      if (options.hasLocation == true) {
+        stories = stories.filter((story) => story.lat && story.lon !== null);
+      } else {
+        stories = stories.filter((story) => !story.lat || story.lon === null);
+      }
+    } else {
+      // do not filter by location
     }
 
     if (options.dateFrom) {
