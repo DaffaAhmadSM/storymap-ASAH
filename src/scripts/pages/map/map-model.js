@@ -1,13 +1,27 @@
 /**
  * MapModel - Model for Map Page
- * Handles data fetching for story map
+ * Handles data fetching for story map with IndexedDB caching
  */
+import idbHelper from '../../utils/idb-helper.js';
+
 class MapModel {
   constructor() {
     this.stories = [];
     this.storiesWithLocation = [];
     this.storiesWithoutLocation = [];
     this.bearerToken = null;
+    this.isOnline = navigator.onLine;
+    
+    // Listen for online/offline events
+    window.addEventListener('online', () => {
+      console.log('App is online');
+      this.isOnline = true;
+    });
+    
+    window.addEventListener('offline', () => {
+      console.log('App is offline');
+      this.isOnline = false;
+    });
   }
 
   setBearerToken(token) {
@@ -35,30 +49,56 @@ class MapModel {
         fetchOptions.headers["Authorization"] = `Bearer ${authToken}`;
       }
 
-      const response = await fetch(endpoint, fetchOptions);
+      // Try to fetch from network
+      try {
+        const response = await fetch(endpoint, fetchOptions);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+          throw new Error(data.message || "Failed to fetch stories");
+        }
+
+        const fetchedStories = data.listStory || [];
+
+        // Store in IndexedDB for offline access
+        if (fetchedStories.length > 0) {
+          await idbHelper.saveStories(fetchedStories);
+          console.log('Stories saved to IndexedDB');
+        }
+
+        // Store based on location parameter
+        if (locationParam === 1) {
+          this.storiesWithLocation = fetchedStories;
+        } else if (locationParam === 0) {
+          this.storiesWithoutLocation = fetchedStories;
+        } else {
+          this.stories = fetchedStories;
+        }
+
+        return fetchedStories;
+      } catch (networkError) {
+        console.warn('Network request failed, trying IndexedDB cache:', networkError);
+        
+        // If network fails, try to get from IndexedDB
+        if (locationParam === 1) {
+          const cachedStories = await idbHelper.getStoriesWithLocation();
+          this.storiesWithLocation = cachedStories;
+          return cachedStories;
+        } else if (locationParam === 0) {
+          const cachedStories = await idbHelper.getStoriesWithoutLocation();
+          this.storiesWithoutLocation = cachedStories;
+          return cachedStories;
+        } else {
+          const cachedStories = await idbHelper.getAllStories();
+          this.stories = cachedStories;
+          return cachedStories;
+        }
       }
-
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.message || "Failed to fetch stories");
-      }
-
-      const fetchedStories = data.listStory || [];
-
-      // Store based on location parameter
-      if (locationParam === 1) {
-        this.storiesWithLocation = fetchedStories;
-      } else if (locationParam === 0) {
-        this.storiesWithoutLocation = fetchedStories;
-      } else {
-        this.stories = fetchedStories;
-      }
-
-      return fetchedStories;
     } catch (error) {
       console.error("Error fetching stories:", error);
       throw error;
@@ -96,6 +136,53 @@ class MapModel {
 
   getStoriesWithoutLocation() {
     return this.storiesWithoutLocation;
+  }
+
+  /**
+   * Delete story from IndexedDB cache
+   */
+  async deleteStoryFromCache(storyId) {
+    try {
+      await idbHelper.deleteStory(storyId);
+      console.log(`Story ${storyId} deleted from cache`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting story from cache:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear all cached stories
+   */
+  async clearCache() {
+    try {
+      await idbHelper.clearAllStories();
+      console.log('All cached stories cleared');
+      return true;
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get cached story count
+   */
+  async getCachedStoryCount() {
+    try {
+      return await idbHelper.getStoryCount();
+    } catch (error) {
+      console.error('Error getting cached story count:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check if running in offline mode
+   */
+  isOffline() {
+    return !this.isOnline;
   }
 
 

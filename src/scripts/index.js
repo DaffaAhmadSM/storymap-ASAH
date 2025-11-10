@@ -27,6 +27,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Register service worker on page load (regardless of login status)
   await registerServiceWorker();
 
+  // Initialize PWA install prompt
+  initializePWAInstall();
+
+  // Initialize offline detection
+  initializeOfflineDetection();
+
   updateAuthUI();
   await initializeNotifications();
 
@@ -42,6 +48,130 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("Service Worker registration failed:", error);
       }
     }
+  }
+
+  // PWA Install functionality
+  let deferredPrompt = null;
+
+  function initializePWAInstall() {
+    const installBtn = document.getElementById('install-btn');
+    
+    // Listen for beforeinstallprompt event
+    window.addEventListener('beforeinstallprompt', (e) => {
+      console.log('beforeinstallprompt event fired');
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Save the event so it can be triggered later
+      deferredPrompt = e;
+      // Show install button
+      if (installBtn) {
+        installBtn.style.display = 'flex';
+      }
+    });
+
+    // Handle install button click
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) {
+          console.log('No deferred prompt available');
+          return;
+        }
+
+        // Show the install prompt
+        deferredPrompt.prompt();
+
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to install prompt: ${outcome}`);
+
+        if (outcome === 'accepted') {
+          console.log('PWA installation accepted');
+          showInstallMessage('App installed successfully!', false);
+        } else {
+          console.log('PWA installation dismissed');
+        }
+
+        // Clear the deferred prompt
+        deferredPrompt = null;
+        installBtn.style.display = 'none';
+      });
+    }
+
+    // Listen for app installed event
+    window.addEventListener('appinstalled', () => {
+      console.log('PWA installed successfully');
+      showInstallMessage('Story Map installed! You can now use it offline.', false);
+      if (installBtn) {
+        installBtn.style.display = 'none';
+      }
+      deferredPrompt = null;
+    });
+
+    // Check if app is already installed (standalone mode)
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('App is running in standalone mode');
+      if (installBtn) {
+        installBtn.style.display = 'none';
+      }
+    }
+  }
+
+  function showInstallMessage(message, isError = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = isError ? 'notification-toast error' : 'notification-toast success';
+    messageDiv.textContent = message;
+    messageDiv.style.cssText = `
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      padding: 15px 20px;
+      background: ${isError ? '#e74c3c' : '#27ae60'};
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    setTimeout(() => {
+      messageDiv.style.animation = 'slideOut 0.3s ease';
+      setTimeout(() => messageDiv.remove(), 300);
+    }, 3000);
+  }
+
+  // Offline/Online detection
+  function initializeOfflineDetection() {
+    const offlineIndicator = document.getElementById('offline-indicator');
+    
+    function updateOnlineStatus() {
+      if (offlineIndicator) {
+        if (navigator.onLine) {
+          offlineIndicator.style.display = 'none';
+          console.log('App is online');
+        } else {
+          offlineIndicator.style.display = 'flex';
+          console.log('App is offline');
+        }
+      }
+    }
+
+    // Check initial status
+    updateOnlineStatus();
+
+    // Listen for online/offline events
+    window.addEventListener('online', () => {
+      updateOnlineStatus();
+      showInstallMessage('You are back online!', false);
+      // Reload current page data when back online
+      app.renderPage();
+    });
+
+    window.addEventListener('offline', () => {
+      updateOnlineStatus();
+      showInstallMessage('You are offline. Showing cached data.', true);
+    });
   }
 
   async function initializeNotifications() {

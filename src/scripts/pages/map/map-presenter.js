@@ -39,8 +39,19 @@ class MapPresenter {
       );
 
       this.view.showLoading(false);
+      
+      // Show info if data is from cache (offline)
+      if (this.model.isOffline()) {
+        this.view.showError('Showing cached stories (offline mode)');
+        setTimeout(() => this.view.showError(null), 3000);
+      }
+      
       this.view.renderMarkers(result.withLocation);
       this.view.renderStoryList(result.withoutLocation);
+      
+      // Log cache info
+      const cacheCount = await this.model.getCachedStoryCount();
+      console.log(`${cacheCount} stories cached in IndexedDB`);
     } catch (error) {
       this.view.showLoading(false);
       const errorMessage =
