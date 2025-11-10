@@ -866,8 +866,7 @@ class MapView {
 
     // All stories
     if (stories && stories.length > 0) {
-      html +=
-        '<section class="story-section" aria-label="All stories">';
+      html += '<section class="story-section" aria-label="All stories">';
       html +=
         '<h4><span class="location-icon" aria-hidden="true">�</span>All Stories</h4>';
       html += '<ul role="list" class="story-list">';
