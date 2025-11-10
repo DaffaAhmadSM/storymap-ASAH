@@ -1,3 +1,5 @@
+import syncManager from "../../utils/sync-manager.js";
+
 class AddStoryPresenter {
   constructor(model, view, authService, config) {
     this.model = model;
@@ -192,6 +194,22 @@ class AddStoryPresenter {
       this.view.disableForm(true);
 
       const token = this.authService.getToken();
+
+      // Check if online
+      if (!navigator.onLine) {
+        // Save offline
+        const result = await syncManager.saveStoryOffline(data);
+
+        this.view.showLoading(false);
+        this.view.showSuccess("Story saved offline! Will sync when online.");
+
+        setTimeout(() => {
+          window.location.hash = "#/map";
+        }, 2000);
+        return;
+      }
+
+      // Online - send to API directly
       const result = await this.model.addStory(this.config.apiUrl, data, token);
 
       this.view.showLoading(false);

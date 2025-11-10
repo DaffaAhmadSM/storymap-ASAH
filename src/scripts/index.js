@@ -3,6 +3,7 @@ import "../styles/styles.css";
 import App from "./pages/app.js";
 import AuthService from "./utils/auth-service.js";
 import NotificationService from "./utils/notification-service.js";
+import syncManager from "./utils/sync-manager.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const authService = new AuthService();
@@ -11,6 +12,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
   if (vapidPublicKey) {
     notificationService.setVapidKey(vapidPublicKey);
+  }
+
+  // Initialize sync manager
+  const apiUrl = import.meta.env.VITE_API_URL;
+  const token = authService.getToken();
+  if (apiUrl && token) {
+    syncManager.initialize(apiUrl, token);
+    console.log("Sync manager initialized");
   }
 
   const app = new App({
@@ -169,6 +178,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.addEventListener("online", () => {
       updateOnlineStatus();
       showInstallMessage("You are back online!", false);
+
+      // Trigger sync when back online
+      const token = authService.getToken();
+      if (token) {
+        syncManager.updateToken(token);
+        syncManager.syncPendingStories().catch((error) => {
+          console.error("Auto-sync failed:", error);
+        });
+      }
+
       // Reload current page data when back online
       app.renderPage();
     });
@@ -231,6 +250,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       notificationBtn.disabled = true;
 
+      // Check if browser supports notifications
+      if (!("Notification" in window)) {
+        throw new Error("This browser does not support notifications");
+      }
+
+      if (!("PushManager" in window)) {
+        throw new Error("This browser does not support push notifications");
+      }
+
+      // Check if running on HTTPS or localhost
+      const isSecure =
+        window.isSecureContext ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.protocol === "https:";
+
+      if (!isSecure) {
+        throw new Error(
+          "Push notifications require HTTPS. Please access the app via HTTPS or localhost."
+        );
+      }
+
       // Ensure service worker is registered
       if (!notificationService.registration) {
         await registerServiceWorker();
@@ -249,10 +290,31 @@ document.addEventListener("DOMContentLoaded", async () => {
       await updateNotificationUI();
     } catch (error) {
       console.error("Notification toggle error:", error);
-      showNotificationMessage(
-        "Failed to toggle notifications: " + error.message,
-        true
-      );
+
+      // Show user-friendly error messages
+      let errorMessage = error.message;
+
+      if (error.message.includes("HTTPS")) {
+        errorMessage =
+          "⚠️ Push notifications require HTTPS.\n\n" +
+          "Please access the app via:\n" +
+          "• https://your-domain.com\n" +
+          "• or http://localhost";
+      } else if (error.message.includes("denied")) {
+        errorMessage =
+          "❌ Notification permission denied.\n\n" +
+          "Please enable notifications in your browser settings.";
+      } else if (error.message.includes("not support")) {
+        errorMessage =
+          "❌ Your browser doesn't support push notifications.\n\n" +
+          "Please use a modern browser like Chrome, Firefox, or Edge.";
+      } else if (error.message.includes("VAPID")) {
+        errorMessage =
+          "⚠️ Push notification configuration error.\n\n" +
+          "Please contact the administrator.";
+      }
+
+      showNotificationMessage(errorMessage, true);
     } finally {
       notificationBtn.disabled = false;
     }
@@ -263,7 +325,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     messageDiv.className = isError
       ? "notification-toast error"
       : "notification-toast success";
-    messageDiv.textContent = message;
+
+    // Support multiline messages
+    messageDiv.innerHTML = message.replace(/\n/g, "<br>");
+
     messageDiv.style.cssText = `
       position: fixed;
       top: 100px;
@@ -275,19 +340,110 @@ document.addEventListener("DOMContentLoaded", async () => {
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       z-index: 10000;
       animation: slideIn 0.3s ease;
+      max-width: 400px;
+      text-align: left;
+      line-height: 1.5;
     `;
 
     document.body.appendChild(messageDiv);
 
-    setTimeout(() => {
-      messageDiv.style.animation = "slideOut 0.3s ease";
-      setTimeout(() => messageDiv.remove(), 300);
-    }, 3000);
+    setTimeout(
+      () => {
+        messageDiv.style.animation = "slideOut 0.3s ease";
+        setTimeout(() => messageDiv.remove(), 300);
+      },
+      isError ? 5000 : 3000
+    ); // Show errors longer
   }
 
   const notificationBtn = document.getElementById("notification-btn");
   if (notificationBtn) {
     notificationBtn.addEventListener("click", handleNotificationToggle);
+  }
+
+  // Sync button functionality
+  const syncBtn = document.getElementById("sync-btn");
+  if (syncBtn) {
+    syncBtn.addEventListener("click", handleSyncClick);
+  }
+
+  // Update sync UI periodically
+  setInterval(updateSyncUI, 2000);
+  updateSyncUI();
+
+  // Listen to sync events
+  syncManager.onSync((event, data) => {
+    if (event === "sync-start") {
+      showNotificationMessage("Syncing pending stories...");
+    } else if (event === "sync-complete") {
+      if (data.synced > 0) {
+        showNotificationMessage(`Synced ${data.synced} stories successfully!`);
+        app.renderPage(); // Refresh page to show synced stories
+      }
+      if (data.failed > 0) {
+        showNotificationMessage(`${data.failed} stories failed to sync`, true);
+      }
+      updateSyncUI();
+    } else if (event === "story-queued") {
+      showNotificationMessage("Story saved offline");
+      updateSyncUI();
+    }
+  });
+
+  async function handleSyncClick() {
+    if (!authService.isLoggedIn()) return;
+
+    try {
+      syncBtn.disabled = true;
+      syncBtn.classList.add("syncing");
+
+      const token = authService.getToken();
+      syncManager.updateToken(token);
+
+      await syncManager.syncPendingStories();
+    } catch (error) {
+      console.error("Manual sync error:", error);
+      showNotificationMessage("Sync failed: " + error.message, true);
+    } finally {
+      syncBtn.disabled = false;
+      syncBtn.classList.remove("syncing");
+    }
+  }
+
+  async function updateSyncUI() {
+    const syncBadge = document.getElementById("sync-badge");
+
+    if (!authService.isLoggedIn()) {
+      if (syncBtn) syncBtn.style.display = "none";
+      return;
+    }
+
+    try {
+      const status = await syncManager.getSyncStatus();
+
+      if (status.pendingCount > 0) {
+        if (syncBtn) syncBtn.style.display = "flex";
+        if (syncBadge) {
+          syncBadge.style.display = "flex";
+          syncBadge.textContent = status.pendingCount;
+        }
+
+        // Update title with sync info
+        if (syncBtn) {
+          if (status.isSyncing) {
+            syncBtn.title = "Syncing...";
+          } else if (status.canSync) {
+            syncBtn.title = `Click to sync ${status.pendingCount} pending stories`;
+          } else {
+            syncBtn.title = `${status.pendingCount} stories pending - will sync when online`;
+          }
+        }
+      } else {
+        if (syncBtn) syncBtn.style.display = "none";
+      }
+    } catch (error) {
+      console.error("Error updating sync UI:", error);
+    }
   }
 
   function updateAuthUI() {

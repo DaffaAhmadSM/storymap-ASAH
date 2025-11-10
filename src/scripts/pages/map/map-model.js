@@ -32,6 +32,12 @@ class MapModel {
     try {
       const authToken = token || this.bearerToken;
 
+      // If offline, go directly to cache
+      if (!this.isOnline) {
+        console.log("Offline mode detected - loading from cache");
+        return await this.loadFromCache(locationParam);
+      }
+
       // Build endpoint based on locationParam
       let endpoint = baseUrl + "/stories";
       if (locationParam !== null) {
@@ -88,23 +94,44 @@ class MapModel {
         );
 
         // If network fails, try to get from IndexedDB
-        if (locationParam === 1) {
-          const cachedStories = await idbHelper.getStoriesWithLocation();
-          this.storiesWithLocation = cachedStories;
-          return cachedStories;
-        } else if (locationParam === 0) {
-          const cachedStories = await idbHelper.getStoriesWithoutLocation();
-          this.storiesWithoutLocation = cachedStories;
-          return cachedStories;
-        } else {
-          const cachedStories = await idbHelper.getAllStories();
-          this.stories = cachedStories;
-          return cachedStories;
-        }
+        return await this.loadFromCache(locationParam);
       }
     } catch (error) {
       console.error("Error fetching stories:", error);
-      throw error;
+
+      // Last resort - try cache
+      try {
+        return await this.loadFromCache(locationParam);
+      } catch (cacheError) {
+        console.error("Cache fallback also failed:", cacheError);
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Load stories from IndexedDB cache
+   */
+  async loadFromCache(locationParam) {
+    if (locationParam === 1) {
+      const cachedStories = await idbHelper.getStoriesWithLocation();
+      this.storiesWithLocation = cachedStories;
+      console.log(
+        `Loaded ${cachedStories.length} stories with location from cache`
+      );
+      return cachedStories;
+    } else if (locationParam === 0) {
+      const cachedStories = await idbHelper.getStoriesWithoutLocation();
+      this.storiesWithoutLocation = cachedStories;
+      console.log(
+        `Loaded ${cachedStories.length} stories without location from cache`
+      );
+      return cachedStories;
+    } else {
+      const cachedStories = await idbHelper.getAllStories();
+      this.stories = cachedStories;
+      console.log(`Loaded ${cachedStories.length} stories from cache`);
+      return cachedStories;
     }
   }
 
@@ -125,6 +152,38 @@ class MapModel {
       };
     } catch (error) {
       console.error("Error fetching all stories:", error);
+
+      // If offline, try to get all cached stories
+      if (!this.isOnline) {
+        console.log("Offline mode - attempting to load cached stories");
+        try {
+          const cachedStories = await idbHelper.getAllStories();
+
+          const withLocation = cachedStories.filter(
+            (story) => story.lat !== null && story.lon !== null
+          );
+          const withoutLocation = cachedStories.filter(
+            (story) => story.lat === null || story.lon === null
+          );
+
+          this.stories = cachedStories;
+          this.storiesWithLocation = withLocation;
+          this.storiesWithoutLocation = withoutLocation;
+
+          console.log(
+            `Loaded ${cachedStories.length} cached stories from IndexedDB`
+          );
+
+          return {
+            withLocation,
+            withoutLocation,
+            all: this.stories,
+          };
+        } catch (cacheError) {
+          console.error("Failed to load cached stories:", cacheError);
+        }
+      }
+
       throw error;
     }
   }

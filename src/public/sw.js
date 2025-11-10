@@ -1,9 +1,6 @@
 self.addEventListener("push", (event) => {
   const data = event.data.json();
 
-  // debug the data received
-  console.log("Push received:", data);
-
   const title = data.title || "Story Map Notification";
   const options = {
     body: data.options?.body || "You have a new notification",
@@ -53,8 +50,18 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip caching for chrome-extension and other non-http(s) requests
-  if (!request.url.startsWith("http")) {
+  // Skip caching for:
+  // - Non-http(s) requests (chrome-extension, etc)
+  // - Vite HMR and dev server requests
+  // - Browser extensions
+  if (
+    !request.url.startsWith("http") ||
+    url.pathname.includes("/@vite") ||
+    url.pathname.includes("/@fs") ||
+    url.pathname.includes("/__vite") ||
+    url.pathname.includes("/node_modules") ||
+    url.searchParams.has("t") // Vite timestamp query
+  ) {
     return;
   }
 
@@ -134,16 +141,17 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static assets - Cache First
+  // Static assets (HTML, CSS, JS) - Cache First with Network Fallback
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+    caches
+      .match(request)
+      .then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
 
-      return fetch(request)
-        .then((response) => {
-          // Cache the fetched resource
+        return fetch(request).then((response) => {
+          // Only cache successful GET requests
           if (request.method === "GET" && response.status === 200) {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -151,14 +159,22 @@ self.addEventListener("fetch", (event) => {
             });
           }
           return response;
-        })
-        .catch(() => {
-          // Return a basic offline page for navigation requests
-          if (request.mode === "navigate") {
-            return caches.match("/index.html");
-          }
         });
-    })
+      })
+      .catch((error) => {
+        console.error("Fetch failed:", error);
+
+        // Return offline page for navigation requests
+        if (request.mode === "navigate") {
+          return caches.match("/index.html");
+        }
+
+        // For other requests, let it fail gracefully
+        return new Response("Network error occurred", {
+          status: 408,
+          headers: { "Content-Type": "text/plain" },
+        });
+      })
   );
 });
 
@@ -173,6 +189,7 @@ const STATIC_ASSETS = [
   "/manifest.json",
   "/images/icon-192x192.png",
   "/images/icon-512x512.png",
+  "/stories-placeholder.png",
 ];
 
 // Install event - cache static assets
@@ -184,11 +201,25 @@ self.addEventListener("install", (event) => {
       .open(CACHE_NAME)
       .then((cache) => {
         console.log("Caching static assets");
-        return cache.addAll(STATIC_ASSETS);
+        // Use addAll for critical assets, but don't fail if some are missing
+        return cache.addAll(STATIC_ASSETS).catch((error) => {
+          console.warn("Some assets failed to cache:", error);
+          // Cache assets individually to avoid failing completely
+          return Promise.all(
+            STATIC_ASSETS.map((url) =>
+              cache
+                .add(url)
+                .catch((err) => console.warn(`Failed to cache ${url}:`, err))
+            )
+          );
+        });
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log("Service Worker installed successfully");
+        return self.skipWaiting();
+      })
       .catch((error) => {
-        console.error("Failed to cache static assets:", error);
+        console.error("Service Worker installation failed:", error);
       })
   );
 });

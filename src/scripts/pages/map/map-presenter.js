@@ -42,18 +42,55 @@ class MapPresenter {
 
       // Show info if data is from cache (offline)
       if (this.model.isOffline()) {
-        this.view.showError("Showing cached stories (offline mode)");
-        setTimeout(() => this.view.showError(null), 3000);
+        const cacheCount = result.all.length;
+        if (cacheCount > 0) {
+          this.view.showError(
+            `📱 Offline mode: Showing ${cacheCount} cached stories`
+          );
+        } else {
+          this.view.showError("📱 Offline mode: No cached stories available");
+        }
+        setTimeout(() => this.view.showError(null), 5000);
       }
 
       this.view.renderMarkers(result.withLocation);
-      this.view.renderStoryList(result.withoutLocation);
+      // Show ALL stories in sidebar (not just those without location)
+      this.view.renderStoryList(result.all);
 
       // Log cache info
       const cacheCount = await this.model.getCachedStoryCount();
       console.log(`${cacheCount} stories cached in IndexedDB`);
+      console.log(
+        `Displaying ${result.withLocation.length} stories on map, ${result.all.length} stories in sidebar`
+      );
     } catch (error) {
       this.view.showLoading(false);
+
+      // Check if we have any cached data
+      const cacheCount = await this.model.getCachedStoryCount();
+
+      if (cacheCount > 0 && this.model.isOffline()) {
+        // We have cached data, try to display it
+        console.log(
+          "Error loading from network, attempting to show cached data"
+        );
+        try {
+          const cachedStories = await this.model.fetchAllStories(
+            this.apiUrl,
+            this.bearerToken
+          );
+          this.view.renderMarkers(cachedStories.withLocation);
+          this.view.renderStoryList(cachedStories.all);
+          this.view.showError(
+            `📱 Offline: Showing ${cacheCount} cached stories`
+          );
+          setTimeout(() => this.view.showError(null), 5000);
+          return;
+        } catch (cacheError) {
+          console.error("Failed to load cached stories:", cacheError);
+        }
+      }
+
       const errorMessage =
         error.message || "Failed to load stories. Please try again later.";
       this.view.showError(errorMessage);

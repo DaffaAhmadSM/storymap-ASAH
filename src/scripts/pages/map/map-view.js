@@ -124,8 +124,7 @@ class MapView {
 
     validStories.forEach((story) => {
       const icon = L.icon({
-        iconUrl:
-          story.photoUrl || "https://via.placeholder.com/50x50?text=No+Image",
+        iconUrl: story.photoUrl || "/stories-placeholder.png",
         iconSize: [50, 50],
         iconAnchor: [25, 50],
         popupAnchor: [0, -50],
@@ -153,8 +152,7 @@ class MapView {
    * Creates HTML content for a marker popup
    */
   createPopupContent(story) {
-    const imageUrl =
-      story.photoUrl || "https://via.placeholder.com/300x180?text=No+Image";
+    const imageUrl = story.photoUrl || "/stories-placeholder.png";
     const name = story.name || "Unnamed Story";
     const description = story.description || "No description available";
     const createdDate = new Date(story.createdAt).toLocaleString();
@@ -164,7 +162,7 @@ class MapView {
         <img 
           src="${imageUrl}" 
           alt="${this.escapeHtml(name)} - Story photo" 
-          onerror="this.src='https://via.placeholder.com/300x180?text=Image+Not+Found'; this.alt='Image not available'"
+          onerror="this.src='/stories-placeholder.png'; this.alt='Image not available'"
           loading="lazy"
         >
         <div class="popup-info">
@@ -861,16 +859,17 @@ class MapView {
     const sidebar = this.getStoryListSidebar();
     if (!sidebar) return;
 
-    let html = '<button id="toggle-sidebar-btn" class="toggle-sidebar-btn" title="Toggle stories sidebar" aria-label="Toggle stories sidebar" aria-expanded="true" aria-controls="story-list-sidebar-id">✕</button>';
+    let html =
+      '<button id="toggle-sidebar-btn" class="toggle-sidebar-btn" title="Toggle stories sidebar" aria-label="Toggle stories sidebar" aria-expanded="true" aria-controls="story-list-sidebar-id">✕</button>';
     html += '<div class="story-list-content">';
     html += "<h3>Stories</h3>";
 
-    // Stories without location
+    // All stories
     if (stories && stories.length > 0) {
       html +=
-        '<section class="story-section" aria-label="Stories without location">';
+        '<section class="story-section" aria-label="All stories">';
       html +=
-        '<h4><span class="location-icon" aria-hidden="true">📝</span>Stories</h4>';
+        '<h4><span class="location-icon" aria-hidden="true">�</span>All Stories</h4>';
       html += '<ul role="list" class="story-list">';
       stories.forEach((story) => {
         html += this.createStoryListItem(story);
@@ -894,8 +893,7 @@ class MapView {
    * Create story list item HTML
    */
   createStoryListItem(story) {
-    const imageUrl =
-      story.photoUrl || "https://via.placeholder.com/100x100?text=No+Image";
+    const imageUrl = story.photoUrl || "/stories-placeholder.png";
     const name = story.name || "Unnamed Story";
     const description = story.description || "No description available";
     const truncatedDesc =
@@ -919,7 +917,7 @@ class MapView {
             alt="${this.escapeHtml(name)} - Story thumbnail" 
             class="story-thumb"
             loading="lazy"
-            onerror="this.src='https://via.placeholder.com/100x100?text=No+Image'; this.alt='Image not available'"
+            onerror="this.src='/stories-placeholder.png'; this.alt='Image not available'"
           />
           <div class="story-item-info">
             <h5>${this.escapeHtml(name)}</h5>
@@ -1038,8 +1036,7 @@ class MapView {
     const modal = this.getStoryDetailModal();
     if (!modal) return;
 
-    const imageUrl =
-      story.photoUrl || "https://via.placeholder.com/600x400?text=No+Image";
+    const imageUrl = story.photoUrl || "/stories-placeholder.png";
     const name = story.name || "Unnamed Story";
     const description = story.description || "No description available";
     const createdAt = new Date(story.createdAt).toLocaleString();
@@ -1057,7 +1054,7 @@ class MapView {
             alt="${this.escapeHtml(name)} - Full story image" 
             class="story-detail-image"
             loading="lazy"
-            onerror="this.src='https://via.placeholder.com/600x400?text=Image+Not+Found'; this.alt='Image not available'"
+            onerror="this.src='/stories-placeholder.png'; this.alt='Image not available'"
           />
           <div class="story-detail-info">
             <p class="story-description">${this.escapeHtml(description)}</p>

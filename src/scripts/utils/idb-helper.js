@@ -4,8 +4,9 @@
  */
 
 const DB_NAME = "story-map-db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "stories";
+const PENDING_STORE_NAME = "pending-stories";
 
 /**
  * Open or create the IndexedDB database
@@ -30,7 +31,7 @@ function openDatabase() {
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
 
-      // Create object store if it doesn't exist
+      // Create stories object store if it doesn't exist
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const objectStore = db.createObjectStore(STORE_NAME, {
           keyPath: "id",
@@ -43,7 +44,20 @@ function openDatabase() {
           unique: false,
         });
 
-        console.log("IndexedDB object store created");
+        console.log("IndexedDB stories object store created");
+      }
+
+      // Create pending stories object store for offline sync
+      if (!db.objectStoreNames.contains(PENDING_STORE_NAME)) {
+        const pendingStore = db.createObjectStore(PENDING_STORE_NAME, {
+          keyPath: "tempId",
+          autoIncrement: true,
+        });
+
+        pendingStore.createIndex("createdAt", "createdAt", { unique: false });
+        pendingStore.createIndex("status", "status", { unique: false });
+
+        console.log("IndexedDB pending-stories object store created");
       }
     };
   });
@@ -348,6 +362,336 @@ function isIndexedDBSupported() {
   return "indexedDB" in window;
 }
 
+/**
+ * Search stories by name or description
+ */
+async function searchStories(searchQuery) {
+  try {
+    const allStories = await getAllStories();
+    const query = searchQuery.toLowerCase().trim();
+
+    if (!query) {
+      return allStories;
+    }
+
+    return allStories.filter((story) => {
+      const nameMatch = story.name?.toLowerCase().includes(query);
+      const descMatch = story.description?.toLowerCase().includes(query);
+      return nameMatch || descMatch;
+    });
+  } catch (error) {
+    console.error("Error searching stories:", error);
+    return [];
+  }
+}
+
+/**
+ * Filter stories by criteria
+ * @param {Object} filters - { hasLocation: boolean, dateFrom: Date, dateTo: Date }
+ */
+async function filterStories(filters = {}) {
+  try {
+    let stories = await getAllStories();
+
+    // Filter by location
+    if (filters.hasLocation !== undefined) {
+      stories = stories.filter(
+        (story) => story.hasLocation === filters.hasLocation
+      );
+    }
+
+    // Filter by date range
+    if (filters.dateFrom) {
+      stories = stories.filter((story) => {
+        const storyDate = new Date(story.createdAt);
+        return storyDate >= new Date(filters.dateFrom);
+      });
+    }
+
+    if (filters.dateTo) {
+      stories = stories.filter((story) => {
+        const storyDate = new Date(story.createdAt);
+        return storyDate <= new Date(filters.dateTo);
+      });
+    }
+
+    return stories;
+  } catch (error) {
+    console.error("Error filtering stories:", error);
+    return [];
+  }
+}
+
+/**
+ * Sort stories
+ * @param {Array} stories - Stories to sort
+ * @param {String} sortBy - 'name', 'date', 'newest', 'oldest'
+ * @param {String} order - 'asc' or 'desc'
+ */
+function sortStories(stories, sortBy = "date", order = "desc") {
+  const sorted = [...stories];
+
+  switch (sortBy) {
+    case "name":
+      sorted.sort((a, b) => {
+        const nameA = (a.name || "").toLowerCase();
+        const nameB = (b.name || "").toLowerCase();
+        return order === "asc"
+          ? nameA.localeCompare(nameB)
+          : nameB.localeCompare(nameA);
+      });
+      break;
+
+    case "date":
+    case "newest":
+      sorted.sort((a, b) => {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return order === "desc" || sortBy === "newest"
+          ? dateB - dateA
+          : dateA - dateB;
+      });
+      break;
+
+    case "oldest":
+      sorted.sort((a, b) => {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return dateA - dateB;
+      });
+      break;
+
+    default:
+      // Default: newest first
+      sorted.sort((a, b) => {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return dateB - dateA;
+      });
+  }
+
+  return sorted;
+}
+
+/**
+ * Combined search, filter, and sort
+ */
+async function queryStories(options = {}) {
+  try {
+    let stories = await getAllStories();
+
+    // Apply search
+    if (options.search) {
+      const query = options.search.toLowerCase().trim();
+      stories = stories.filter((story) => {
+        const nameMatch = story.name?.toLowerCase().includes(query);
+        const descMatch = story.description?.toLowerCase().includes(query);
+        return nameMatch || descMatch;
+      });
+    }
+
+    // Apply filters
+    if (options.hasLocation !== undefined) {
+      stories = stories.filter(
+        (story) => story.hasLocation === options.hasLocation
+      );
+    }
+
+    if (options.dateFrom) {
+      stories = stories.filter((story) => {
+        const storyDate = new Date(story.createdAt);
+        return storyDate >= new Date(options.dateFrom);
+      });
+    }
+
+    if (options.dateTo) {
+      stories = stories.filter((story) => {
+        const storyDate = new Date(story.createdAt);
+        return storyDate <= new Date(options.dateTo);
+      });
+    }
+
+    // Apply sorting
+    if (options.sortBy) {
+      stories = sortStories(stories, options.sortBy, options.order);
+    }
+
+    return stories;
+  } catch (error) {
+    console.error("Error querying stories:", error);
+    return [];
+  }
+}
+
+// ==================== OFFLINE SYNC FUNCTIONS ====================
+
+/**
+ * Save story to pending queue (for offline creation)
+ */
+async function savePendingStory(storyData) {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_STORE_NAME], "readwrite");
+      const objectStore = transaction.objectStore(PENDING_STORE_NAME);
+
+      const pendingStory = {
+        ...storyData,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        attempts: 0,
+      };
+
+      const request = objectStore.add(pendingStory);
+
+      request.onsuccess = (event) => {
+        const tempId = event.target.result;
+        resolve({ ...pendingStory, tempId });
+      };
+
+      request.onerror = () => {
+        reject(new Error("Failed to save pending story"));
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+        console.log("Pending story saved for sync");
+      };
+    });
+  } catch (error) {
+    console.error("Error saving pending story:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all pending stories
+ */
+async function getPendingStories() {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_STORE_NAME], "readonly");
+      const objectStore = transaction.objectStore(PENDING_STORE_NAME);
+      const request = objectStore.getAll();
+
+      request.onsuccess = () => {
+        resolve(request.result || []);
+      };
+
+      request.onerror = () => {
+        reject(new Error("Failed to get pending stories"));
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error("Error getting pending stories:", error);
+    return [];
+  }
+}
+
+/**
+ * Update pending story status
+ */
+async function updatePendingStory(tempId, updates) {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_STORE_NAME], "readwrite");
+      const objectStore = transaction.objectStore(PENDING_STORE_NAME);
+      const getRequest = objectStore.get(tempId);
+
+      getRequest.onsuccess = () => {
+        const story = getRequest.result;
+        if (!story) {
+          reject(new Error("Pending story not found"));
+          return;
+        }
+
+        const updatedStory = { ...story, ...updates };
+        const updateRequest = objectStore.put(updatedStory);
+
+        updateRequest.onsuccess = () => {
+          resolve(updatedStory);
+        };
+
+        updateRequest.onerror = () => {
+          reject(new Error("Failed to update pending story"));
+        };
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error("Error updating pending story:", error);
+    throw error;
+  }
+}
+
+/**
+ * Delete pending story after successful sync
+ */
+async function deletePendingStory(tempId) {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_STORE_NAME], "readwrite");
+      const objectStore = transaction.objectStore(PENDING_STORE_NAME);
+      const request = objectStore.delete(tempId);
+
+      request.onsuccess = () => {
+        resolve(true);
+      };
+
+      request.onerror = () => {
+        reject(new Error("Failed to delete pending story"));
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+        console.log(`Deleted pending story ${tempId}`);
+      };
+    });
+  } catch (error) {
+    console.error("Error deleting pending story:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get count of pending stories
+ */
+async function getPendingCount() {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_STORE_NAME], "readonly");
+      const objectStore = transaction.objectStore(PENDING_STORE_NAME);
+      const request = objectStore.count();
+
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+
+      request.onerror = () => {
+        reject(new Error("Failed to count pending stories"));
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error("Error counting pending stories:", error);
+    return 0;
+  }
+}
+
 export default {
   openDatabase,
   saveStory,
@@ -360,4 +704,15 @@ export default {
   clearAllStories,
   getStoryCount,
   isIndexedDBSupported,
+  // Search, Filter, Sort
+  searchStories,
+  filterStories,
+  sortStories,
+  queryStories,
+  // Offline Sync
+  savePendingStory,
+  getPendingStories,
+  updatePendingStory,
+  deletePendingStory,
+  getPendingCount,
 };
