@@ -119,6 +119,56 @@ body {
     gap: 15px;
 }
 
+.btn-notification {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.btn-notification:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+}
+
+.btn-notification:active {
+    transform: scale(0.95);
+}
+
+.btn-notification:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-notification.subscribed {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    border-color: #27ae60;
+}
+
+.btn-notification.subscribed:hover {
+    background: linear-gradient(135deg, #229954, #27ae60);
+    border-color: #229954;
+}
+
+.btn-notification svg {
+    width: 22px;
+    height: 22px;
+    fill: #ffffff;
+    transition: all 0.3s ease;
+}
+
+.btn-notification:hover svg {
+    fill: #ffffff;
+}
+
 .user-profile {
     display: flex;
     align-items: center;
@@ -242,6 +292,17 @@ body {
     to {
         transform: translateY(0);
         opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(-50px);
+        opacity: 0;
     }
 }
 
@@ -819,8 +880,6 @@ body {
 
     /* Add Story Button - Mobile Large */
     .add-story-btn {
-        top: 130px;
-        right: 20px;
         padding: 12px 20px;
         font-size: 0.9rem;
     }
@@ -1101,8 +1160,6 @@ body {
 
     /* Add Story Button - Mobile Small */
     .add-story-btn {
-        top: 110px;
-        right: 15px;
         padding: 10px 16px;
         font-size: 0.85rem;
         gap: 6px;
@@ -1353,10 +1410,11 @@ body {
 
 /* Add Story Button */
 .add-story-btn {
-    position: fixed;
-    top: 100px;
+    position: absolute;
+    bottom: 100px;
     right: 30px;
     z-index: 1000;
+    max-height: 10vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #ffffff;
     border: none;
@@ -1866,8 +1924,25 @@ body {
 .toggle-sidebar-btn {
     position: fixed;
     left: 350px;
-    top: 100px;
+    top: 50vh;
     z-index: 950;
+    background-color: #2c3e50;
+    color: #ffffff;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 0 8px 8px 0;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.toggle-sidebar-btn-2 {
+    position: absolute;
+    left: 0;
+    top: 50vh;
+    z-index: 900;
     background-color: #2c3e50;
     color: #ffffff;
     border: none;

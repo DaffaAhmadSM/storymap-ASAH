@@ -51,14 +51,18 @@ export default class MapPage {
           <span>Add Story</span>
         </a>
 
-        <button id="toggle-sidebar-btn" class="toggle-sidebar-btn" title="Toggle stories sidebar" aria-label="Toggle stories sidebar" aria-expanded="true" aria-controls="story-list-sidebar">✕</button>
+        
+        <button id="toggle-sidebar-btn-2" class="toggle-sidebar-btn-2" title="Toggle stories sidebar" aria-label="Toggle stories sidebar" aria-expanded="true" aria-controls="story-list-sidebar-id">☰</button>
 
-        <aside id="story-list-sidebar" class="story-list-sidebar" role="complementary" aria-label="Stories list">
+        <aside id="story-list-sidebar-id" class="story-list-sidebar" role="complementary" aria-label="Stories list">
+          <button id="toggle-sidebar-btn" class="toggle-sidebar-btn" title="Toggle stories sidebar" aria-label="Toggle stories sidebar" aria-expanded="true" aria-controls="story-list-sidebar-id">✕</button>
           <div class="story-list-content">
             <h3>Stories</h3>
             <p class="no-stories">Loading stories...</p>
           </div>
         </aside>
+
+        <button id=""></button>
 
         <div id="map" class="map-container" role="application" aria-label="Interactive map showing story locations"></div>
 

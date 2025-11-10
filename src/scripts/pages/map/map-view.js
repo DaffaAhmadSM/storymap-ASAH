@@ -66,7 +66,7 @@ class MapView {
   }
 
   getStoryListSidebar() {
-    return document.getElementById("story-list-sidebar");
+    return document.getElementById("story-list-sidebar-id");
   }
 
   getStoryDetailModal() {
@@ -75,6 +75,10 @@ class MapView {
 
   getToggleSidebarBtn() {
     return document.getElementById("toggle-sidebar-btn");
+  }
+
+  getToggleSidebarBtn2() {
+    return document.getElementById("toggle-sidebar-btn-2");
   }
 
   initializeMap(lat, lon, zoom) {
@@ -857,7 +861,8 @@ class MapView {
     const sidebar = this.getStoryListSidebar();
     if (!sidebar) return;
 
-    let html = '<div class="story-list-content">';
+    let html = '<button id="toggle-sidebar-btn" class="toggle-sidebar-btn" title="Toggle stories sidebar" aria-label="Toggle stories sidebar" aria-expanded="true" aria-controls="story-list-sidebar-id">✕</button>';
+    html += '<div class="story-list-content">';
     html += "<h3>Stories</h3>";
 
     // Stories without location
@@ -1138,6 +1143,12 @@ class MapView {
     const toggleBtn = this.getToggleSidebarBtn();
     if (toggleBtn) {
       toggleBtn.addEventListener("click", () => {
+        this.toggleSidebar();
+      });
+    }
+    const toggleBtn2 = this.getToggleSidebarBtn2();
+    if (toggleBtn2) {
+      toggleBtn2.addEventListener("click", () => {
         this.toggleSidebar();
       });
     }
