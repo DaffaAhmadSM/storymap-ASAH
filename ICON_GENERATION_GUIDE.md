@@ -18,12 +18,14 @@ Story Map PWA needs the following icon sizes:
 ### Option 1: Using Online Tools
 
 **Recommended: PWA Asset Generator**
+
 1. Visit: https://www.pwabuilder.com/imageGenerator
 2. Upload your base icon (minimum 512x512 PNG)
 3. Download the generated icons
 4. Place in `/public/images/` directory
 
 **Alternative: Favicon Generator**
+
 1. Visit: https://realfavicongenerator.net/
 2. Upload your icon
 3. Download the package
@@ -59,13 +61,13 @@ npm install --save-dev sharp
 ```
 
 ```javascript
-const sharp = require('sharp');
-const fs = require('fs');
-const path = require('path');
+const sharp = require("sharp");
+const fs = require("fs");
+const path = require("path");
 
 const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
-const sourceIcon = 'path/to/source-icon.png'; // Your base icon (512x512 or larger)
-const outputDir = 'public/images';
+const sourceIcon = "path/to/source-icon.png"; // Your base icon (512x512 or larger)
+const outputDir = "public/images";
 
 // Ensure output directory exists
 if (!fs.existsSync(outputDir)) {
@@ -73,12 +75,12 @@ if (!fs.existsSync(outputDir)) {
 }
 
 // Generate all sizes
-sizes.forEach(size => {
+sizes.forEach((size) => {
   sharp(sourceIcon)
     .resize(size, size)
     .toFile(path.join(outputDir, `icon-${size}x${size}.png`))
     .then(() => console.log(`✓ Generated icon-${size}x${size}.png`))
-    .catch(err => console.error(`✗ Error generating ${size}x${size}:`, err));
+    .catch((err) => console.error(`✗ Error generating ${size}x${size}:`, err));
 });
 ```
 
@@ -92,11 +94,13 @@ node generate-icons.js
 ### Requirements
 
 **Mobile Screenshots (narrow form factor):**
+
 - Size: 540x720 or similar portrait aspect
 - Format: PNG
 - Quantity: At least 1, recommended 2-3
 
 **Desktop Screenshots (wide form factor):**
+
 - Size: 1280x720 or similar landscape aspect
 - Format: PNG
 - Quantity: At least 1, recommended 2-3
@@ -114,6 +118,7 @@ node generate-icons.js
 7. Save as `screenshot-mobile-1.png`
 
 **For desktop screenshots:**
+
 1. Set custom dimensions (1280x720)
 2. Capture different app views
 3. Save as `screenshot-desktop-1.png`
@@ -136,6 +141,7 @@ node generate-icons.js
 ### Design Recommendations
 
 ✅ **Do:**
+
 - Use simple, recognizable symbols
 - Ensure good contrast
 - Make it work at small sizes
@@ -144,6 +150,7 @@ node generate-icons.js
 - Test on different backgrounds
 
 ❌ **Don't:**
+
 - Use photos (hard to recognize when small)
 - Include fine details (won't be visible)
 - Use text (hard to read at small sizes)
@@ -155,10 +162,12 @@ node generate-icons.js
 For Android adaptive icons, create a maskable version:
 
 **Safe Zone:**
+
 - Minimum safe zone: 80% of the icon (40% radius circle from center)
 - Outer 20% may be cropped on some devices
 
 **Tools:**
+
 - https://maskable.app/ - Test maskable icons
 - Add `"purpose": "maskable"` to relevant icons in manifest
 

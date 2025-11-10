@@ -3,17 +3,23 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Share your stories with location on an interactive map. Create, explore, and connect through shared experiences." />
+    <meta
+      name="description"
+      content="Share your stories with location on an interactive map. Create, explore, and connect through shared experiences."
+    />
     <meta name="theme-color" content="#3498db" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <meta name="apple-mobile-web-app-title" content="Story Map" />
-    
+
     <link rel="shortcut icon" href="/favicon.png" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/images/icon-192x192.png" />
-    
+
     <title>Story Map - Share Your Stories</title>
 
     <!-- Leaflet CSS -->
@@ -37,8 +43,15 @@
   </head>
   <body>
     <!-- Offline indicator -->
-    <div id="offline-indicator" class="offline-indicator" style="display: none;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div id="offline-indicator" class="offline-indicator" style="display: none">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
         <line x1="1" y1="1" x2="23" y2="23"></line>
         <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
         <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
@@ -49,7 +62,7 @@
       </svg>
       <span>You are offline - Showing cached data</span>
     </div>
-    
+
     <header class="app-header">
       <div class="header-content">
         <a href="#/" class="brand-link">
@@ -86,7 +99,7 @@
             </svg>
             <span>Install App</span>
           </button>
-          
+
           <button
             id="notification-btn"
             class="btn-notification"

@@ -3,24 +3,24 @@
  * Provides functions to store and retrieve stories offline
  */
 
-const DB_NAME = 'story-map-db';
+const DB_NAME = "story-map-db";
 const DB_VERSION = 1;
-const STORE_NAME = 'stories';
+const STORE_NAME = "stories";
 
 /**
  * Open or create the IndexedDB database
  */
 function openDatabase() {
   return new Promise((resolve, reject) => {
-    if (!('indexedDB' in window)) {
-      reject(new Error('IndexedDB is not supported'));
+    if (!("indexedDB" in window)) {
+      reject(new Error("IndexedDB is not supported"));
       return;
     }
 
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => {
-      reject(new Error('Failed to open database'));
+      reject(new Error("Failed to open database"));
     };
 
     request.onsuccess = (event) => {
@@ -33,15 +33,17 @@ function openDatabase() {
       // Create object store if it doesn't exist
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const objectStore = db.createObjectStore(STORE_NAME, {
-          keyPath: 'id',
+          keyPath: "id",
         });
 
         // Create indexes for efficient querying
-        objectStore.createIndex('createdAt', 'createdAt', { unique: false });
-        objectStore.createIndex('name', 'name', { unique: false });
-        objectStore.createIndex('hasLocation', 'hasLocation', { unique: false });
+        objectStore.createIndex("createdAt", "createdAt", { unique: false });
+        objectStore.createIndex("name", "name", { unique: false });
+        objectStore.createIndex("hasLocation", "hasLocation", {
+          unique: false,
+        });
 
-        console.log('IndexedDB object store created');
+        console.log("IndexedDB object store created");
       }
     };
   });
@@ -54,7 +56,7 @@ async function saveStory(story) {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const transaction = db.transaction([STORE_NAME], "readwrite");
       const objectStore = transaction.objectStore(STORE_NAME);
 
       // Add hasLocation flag for easier querying
@@ -71,7 +73,7 @@ async function saveStory(story) {
       };
 
       request.onerror = () => {
-        reject(new Error('Failed to save story'));
+        reject(new Error("Failed to save story"));
       };
 
       transaction.oncomplete = () => {
@@ -79,7 +81,7 @@ async function saveStory(story) {
       };
     });
   } catch (error) {
-    console.error('Error saving story to IndexedDB:', error);
+    console.error("Error saving story to IndexedDB:", error);
     throw error;
   }
 }
@@ -91,7 +93,7 @@ async function saveStories(stories) {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const transaction = db.transaction([STORE_NAME], "readwrite");
       const objectStore = transaction.objectStore(STORE_NAME);
 
       let successCount = 0;
@@ -123,11 +125,11 @@ async function saveStories(stories) {
 
       transaction.onerror = () => {
         db.close();
-        reject(new Error('Transaction failed'));
+        reject(new Error("Transaction failed"));
       };
     });
   } catch (error) {
-    console.error('Error saving stories to IndexedDB:', error);
+    console.error("Error saving stories to IndexedDB:", error);
     throw error;
   }
 }
@@ -139,7 +141,7 @@ async function getAllStories() {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const transaction = db.transaction([STORE_NAME], "readonly");
       const objectStore = transaction.objectStore(STORE_NAME);
       const request = objectStore.getAll();
 
@@ -148,7 +150,7 @@ async function getAllStories() {
       };
 
       request.onerror = () => {
-        reject(new Error('Failed to get stories'));
+        reject(new Error("Failed to get stories"));
       };
 
       transaction.oncomplete = () => {
@@ -156,7 +158,7 @@ async function getAllStories() {
       };
     });
   } catch (error) {
-    console.error('Error getting stories from IndexedDB:', error);
+    console.error("Error getting stories from IndexedDB:", error);
     return [];
   }
 }
@@ -168,9 +170,9 @@ async function getStoriesWithLocation() {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const transaction = db.transaction([STORE_NAME], "readonly");
       const objectStore = transaction.objectStore(STORE_NAME);
-      const index = objectStore.index('hasLocation');
+      const index = objectStore.index("hasLocation");
       const request = index.getAll(true);
 
       request.onsuccess = () => {
@@ -178,7 +180,7 @@ async function getStoriesWithLocation() {
       };
 
       request.onerror = () => {
-        reject(new Error('Failed to get stories with location'));
+        reject(new Error("Failed to get stories with location"));
       };
 
       transaction.oncomplete = () => {
@@ -186,7 +188,7 @@ async function getStoriesWithLocation() {
       };
     });
   } catch (error) {
-    console.error('Error getting stories with location:', error);
+    console.error("Error getting stories with location:", error);
     return [];
   }
 }
@@ -198,9 +200,9 @@ async function getStoriesWithoutLocation() {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const transaction = db.transaction([STORE_NAME], "readonly");
       const objectStore = transaction.objectStore(STORE_NAME);
-      const index = objectStore.index('hasLocation');
+      const index = objectStore.index("hasLocation");
       const request = index.getAll(false);
 
       request.onsuccess = () => {
@@ -208,7 +210,7 @@ async function getStoriesWithoutLocation() {
       };
 
       request.onerror = () => {
-        reject(new Error('Failed to get stories without location'));
+        reject(new Error("Failed to get stories without location"));
       };
 
       transaction.oncomplete = () => {
@@ -216,7 +218,7 @@ async function getStoriesWithoutLocation() {
       };
     });
   } catch (error) {
-    console.error('Error getting stories without location:', error);
+    console.error("Error getting stories without location:", error);
     return [];
   }
 }
@@ -228,7 +230,7 @@ async function getStoryById(id) {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const transaction = db.transaction([STORE_NAME], "readonly");
       const objectStore = transaction.objectStore(STORE_NAME);
       const request = objectStore.get(id);
 
@@ -237,7 +239,7 @@ async function getStoryById(id) {
       };
 
       request.onerror = () => {
-        reject(new Error('Failed to get story'));
+        reject(new Error("Failed to get story"));
       };
 
       transaction.oncomplete = () => {
@@ -245,7 +247,7 @@ async function getStoryById(id) {
       };
     });
   } catch (error) {
-    console.error('Error getting story by ID:', error);
+    console.error("Error getting story by ID:", error);
     return null;
   }
 }
@@ -257,7 +259,7 @@ async function deleteStory(id) {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const transaction = db.transaction([STORE_NAME], "readwrite");
       const objectStore = transaction.objectStore(STORE_NAME);
       const request = objectStore.delete(id);
 
@@ -266,7 +268,7 @@ async function deleteStory(id) {
       };
 
       request.onerror = () => {
-        reject(new Error('Failed to delete story'));
+        reject(new Error("Failed to delete story"));
       };
 
       transaction.oncomplete = () => {
@@ -275,7 +277,7 @@ async function deleteStory(id) {
       };
     });
   } catch (error) {
-    console.error('Error deleting story:', error);
+    console.error("Error deleting story:", error);
     throw error;
   }
 }
@@ -287,7 +289,7 @@ async function clearAllStories() {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const transaction = db.transaction([STORE_NAME], "readwrite");
       const objectStore = transaction.objectStore(STORE_NAME);
       const request = objectStore.clear();
 
@@ -296,16 +298,16 @@ async function clearAllStories() {
       };
 
       request.onerror = () => {
-        reject(new Error('Failed to clear stories'));
+        reject(new Error("Failed to clear stories"));
       };
 
       transaction.oncomplete = () => {
         db.close();
-        console.log('Cleared all stories from IndexedDB');
+        console.log("Cleared all stories from IndexedDB");
       };
     });
   } catch (error) {
-    console.error('Error clearing stories:', error);
+    console.error("Error clearing stories:", error);
     throw error;
   }
 }
@@ -317,7 +319,7 @@ async function getStoryCount() {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const transaction = db.transaction([STORE_NAME], "readonly");
       const objectStore = transaction.objectStore(STORE_NAME);
       const request = objectStore.count();
 
@@ -326,7 +328,7 @@ async function getStoryCount() {
       };
 
       request.onerror = () => {
-        reject(new Error('Failed to count stories'));
+        reject(new Error("Failed to count stories"));
       };
 
       transaction.oncomplete = () => {
@@ -334,7 +336,7 @@ async function getStoryCount() {
       };
     });
   } catch (error) {
-    console.error('Error counting stories:', error);
+    console.error("Error counting stories:", error);
     return 0;
   }
 }
@@ -343,7 +345,7 @@ async function getStoryCount() {
  * Check if IndexedDB is supported
  */
 function isIndexedDBSupported() {
-  return 'indexedDB' in window;
+  return "indexedDB" in window;
 }
 
 export default {

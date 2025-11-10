@@ -19,6 +19,7 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
 - Categories and language settings
 
 **No warnings in Chrome DevTools:**
+
 - Open DevTools → Application → Manifest
 - All required fields present
 - Icons properly configured
@@ -31,11 +32,13 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
 **Caching Strategies:**
 
 1. **Static Assets (Cache First)**
+
    - HTML, CSS, JS files
    - App icons and manifest
    - Cached on install for instant offline access
 
 2. **API Requests (Network First with Cache Fallback)**
+
    - Stories API (`/stories`)
    - Notifications API (`/notifications`)
    - Fresh data when online
@@ -47,6 +50,7 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
    - Placeholder image when offline and not cached
 
 **Features:**
+
 - Automatic cache versioning
 - Old cache cleanup on activation
 - Background sync support
@@ -57,6 +61,7 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
 **File:** `/src/scripts/utils/idb-helper.js`
 
 **Database Schema:**
+
 - Database: `story-map-db`
 - Object Store: `stories`
 - Key Path: `id`
@@ -64,18 +69,19 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
 
 **CRUD Operations:**
 
-| Operation | Function | Description |
-|-----------|----------|-------------|
-| **Create** | `saveStory(story)` | Save single story to cache |
-| **Create** | `saveStories(stories)` | Batch save stories |
-| **Read** | `getAllStories()` | Get all cached stories |
-| **Read** | `getStoriesWithLocation()` | Get stories with coordinates |
-| **Read** | `getStoriesWithoutLocation()` | Get stories without coordinates |
-| **Read** | `getStoryById(id)` | Get specific story by ID |
-| **Delete** | `deleteStory(id)` | Remove story from cache |
-| **Delete** | `clearAllStories()` | Clear entire cache |
+| Operation  | Function                      | Description                     |
+| ---------- | ----------------------------- | ------------------------------- |
+| **Create** | `saveStory(story)`            | Save single story to cache      |
+| **Create** | `saveStories(stories)`        | Batch save stories              |
+| **Read**   | `getAllStories()`             | Get all cached stories          |
+| **Read**   | `getStoriesWithLocation()`    | Get stories with coordinates    |
+| **Read**   | `getStoriesWithoutLocation()` | Get stories without coordinates |
+| **Read**   | `getStoryById(id)`            | Get specific story by ID        |
+| **Delete** | `deleteStory(id)`             | Remove story from cache         |
+| **Delete** | `clearAllStories()`           | Clear entire cache              |
 
 **Additional Features:**
+
 - `getStoryCount()` - Count cached items
 - `isIndexedDBSupported()` - Feature detection
 - Automatic cache timestamp tracking
@@ -83,6 +89,7 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
 ### ✅ 4. Offline Mode
 
 **Features:**
+
 - Offline indicator in header
 - Automatic detection of network status
 - Toast notifications on status change
@@ -90,6 +97,7 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
 - Auto-refresh when back online
 
 **Implementation:**
+
 - Event listeners for `online` and `offline` events
 - Network-aware data fetching
 - IndexedDB fallback for API calls
@@ -98,12 +106,14 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
 ### ✅ 5. Install Prompt
 
 **UI Elements:**
+
 - Install button in header navbar
 - Responsive design (icon-only on mobile)
 - Gradient blue styling
 - Download icon indicator
 
 **Functionality:**
+
 - Intercepts `beforeinstallprompt` event
 - Shows custom install button
 - Triggers browser install prompt on click
@@ -112,6 +122,7 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
 - Detects standalone display mode
 
 **Testing:**
+
 - Desktop: Install button appears in navbar
 - Mobile: Responsive icon button
 - Standalone mode detection works
@@ -119,6 +130,7 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
 ### ✅ 6. Application Shell
 
 **Always Available Offline:**
+
 - Main HTML structure
 - Header with navigation
 - Loading states
@@ -127,6 +139,7 @@ Story Map is now a fully functional Progressive Web App with offline capabilitie
 - Login/Register forms
 
 **Progressive Enhancement:**
+
 - Core functionality works offline
 - Enhanced features online
 - Graceful degradation
@@ -160,11 +173,13 @@ story-map/
 ### Data Flow
 
 #### Online Mode:
+
 ```
 User Request → API Fetch → IndexedDB Save → Display Data
 ```
 
 #### Offline Mode:
+
 ```
 User Request → Network Fail → IndexedDB Retrieve → Display Cached Data
 ```
@@ -172,11 +187,13 @@ User Request → Network Fail → IndexedDB Retrieve → Display Cached Data
 ### Cache Lifecycle
 
 1. **Install Phase:**
+
    - Service worker installs
    - Static assets cached
    - Skip waiting activated
 
 2. **Activate Phase:**
+
    - Old caches deleted
    - Service worker claims clients
    - Ready to handle requests
@@ -189,6 +206,7 @@ User Request → Network Fail → IndexedDB Retrieve → Display Cached Data
 ## User Experience
 
 ### First Visit (Online)
+
 1. Page loads normally
 2. Service worker registers
 3. Static assets cached
@@ -196,23 +214,27 @@ User Request → Network Fail → IndexedDB Retrieve → Display Cached Data
 5. Data fetched and cached
 
 ### First Visit (Offline)
+
 1. Application shell loads (if previously cached)
 2. Offline indicator shows
 3. Cached data displays
 4. Limited functionality (view only)
 
 ### Subsequent Visits (Online)
+
 1. Instant load from cache
 2. Data refreshes from network
 3. Cache updates automatically
 
 ### Subsequent Visits (Offline)
+
 1. Instant load from cache
 2. Offline indicator appears
 3. Full view of cached content
 4. No create/edit functionality
 
 ### After Installation
+
 1. App icon on homescreen/desktop
 2. Standalone window (no browser chrome)
 3. Full PWA experience
@@ -223,6 +245,7 @@ User Request → Network Fail → IndexedDB Retrieve → Display Cached Data
 ### Test Installability
 
 **Desktop:**
+
 1. Open Chrome/Edge
 2. Look for install icon in address bar
 3. Or click "Install App" button in navbar
@@ -230,6 +253,7 @@ User Request → Network Fail → IndexedDB Retrieve → Display Cached Data
 5. Launch from desktop/start menu
 
 **Mobile:**
+
 1. Open in Chrome/Safari
 2. Look for "Add to Home Screen" prompt
 3. Or tap menu → "Install Story Map"
@@ -239,6 +263,7 @@ User Request → Network Fail → IndexedDB Retrieve → Display Cached Data
 ### Test Offline Mode
 
 **Method 1: DevTools**
+
 1. Open DevTools → Network tab
 2. Check "Offline" checkbox
 3. Reload page
@@ -246,6 +271,7 @@ User Request → Network Fail → IndexedDB Retrieve → Display Cached Data
 5. Check offline indicator appears
 
 **Method 2: Airplane Mode**
+
 1. Enable airplane mode
 2. Open/reload app
 3. Navigate between pages
@@ -253,6 +279,7 @@ User Request → Network Fail → IndexedDB Retrieve → Display Cached Data
 5. Check for graceful errors
 
 **Method 3: Service Worker**
+
 1. DevTools → Application → Service Workers
 2. Check "Offline" checkbox
 3. Reload page
@@ -260,12 +287,14 @@ User Request → Network Fail → IndexedDB Retrieve → Display Cached Data
 ### Test IndexedDB
 
 **View Database:**
+
 1. DevTools → Application → Storage → IndexedDB
 2. Expand `story-map-db`
 3. Click `stories` object store
 4. View cached stories with metadata
 
 **Verify Operations:**
+
 ```javascript
 // In browser console
 
@@ -285,6 +314,7 @@ console.log(withLocation);
 ### Test Caching Strategies
 
 **Static Assets:**
+
 1. Load page online
 2. DevTools → Network → Disable cache
 3. Go offline
@@ -292,12 +322,14 @@ console.log(withLocation);
 5. Verify instant load from cache
 
 **API Requests:**
+
 1. Load stories online
 2. Go offline
 3. Navigate away and back
 4. Verify cached stories display
 
 **Images:**
+
 1. View stories online
 2. Go offline
 3. Reload page
@@ -307,10 +339,10 @@ console.log(withLocation);
 
 ### Load Times
 
-| Scenario | First Load | Repeat Load | Offline Load |
-|----------|------------|-------------|--------------|
-| **Without PWA** | 2-3s | 2-3s | ❌ Fail |
-| **With PWA** | 2-3s | <1s | <1s |
+| Scenario        | First Load | Repeat Load | Offline Load |
+| --------------- | ---------- | ----------- | ------------ |
+| **Without PWA** | 2-3s       | 2-3s        | ❌ Fail      |
+| **With PWA**    | 2-3s       | <1s         | <1s          |
 
 ### Data Usage
 
@@ -325,21 +357,22 @@ console.log(withLocation);
 ✅ **Fast loading** - Instant from cache  
 ✅ **Low data usage** - Smart caching  
 ✅ **Push notifications** - Re-engagement  
-✅ **Responsive design** - Works on all devices  
+✅ **Responsive design** - Works on all devices
 
 ## Browser Support
 
-| Browser | PWA Support | Service Worker | IndexedDB | Install Prompt |
-|---------|-------------|----------------|-----------|----------------|
-| Chrome | ✅ Full | ✅ | ✅ | ✅ |
-| Edge | ✅ Full | ✅ | ✅ | ✅ |
-| Firefox | ✅ Full | ✅ | ✅ | ⚠️ Manual |
-| Safari | ✅ iOS 11.3+ | ✅ | ✅ | ⚠️ Manual |
-| Opera | ✅ Full | ✅ | ✅ | ✅ |
+| Browser | PWA Support  | Service Worker | IndexedDB | Install Prompt |
+| ------- | ------------ | -------------- | --------- | -------------- |
+| Chrome  | ✅ Full      | ✅             | ✅        | ✅             |
+| Edge    | ✅ Full      | ✅             | ✅        | ✅             |
+| Firefox | ✅ Full      | ✅             | ✅        | ⚠️ Manual      |
+| Safari  | ✅ iOS 11.3+ | ✅             | ✅        | ⚠️ Manual      |
+| Opera   | ✅ Full      | ✅             | ✅        | ✅             |
 
 ## Manifest Validation
 
 **No Warnings/Errors:**
+
 - ✅ Name and short_name present
 - ✅ Icons include 192x192 and 512x512
 - ✅ start_url is valid
@@ -353,6 +386,7 @@ console.log(withLocation);
 **Expected PWA Score: 100**
 
 Checklist:
+
 - ✅ Registers a service worker
 - ✅ Responds with 200 when offline
 - ✅ Contains metadata for Add to Home Screen
@@ -365,6 +399,7 @@ Checklist:
 ## Best Practices
 
 ### Do's ✅
+
 - Cache static assets on install
 - Update cache incrementally
 - Provide offline fallback
@@ -373,6 +408,7 @@ Checklist:
 - Handle failed network requests gracefully
 
 ### Don'ts ❌
+
 - Don't cache everything (storage limits)
 - Don't show install prompt immediately
 - Don't block on cache operations
@@ -382,24 +418,28 @@ Checklist:
 ## Troubleshooting
 
 ### Install Button Not Showing
+
 - Check if already installed (standalone mode)
 - Try incognito/private mode
 - Clear site data and reload
 - Check browser support
 
 ### Offline Mode Not Working
+
 - Verify service worker is registered
 - Check Application → Service Workers in DevTools
 - Ensure cache is populated
 - Check network tab for cache hits
 
 ### Data Not Caching
+
 - Open IndexedDB in DevTools
 - Verify database created
 - Check for quota exceeded errors
 - Verify network requests succeed first
 
 ### Service Worker Not Updating
+
 - Unregister old service worker
 - Hard refresh (Ctrl+Shift+R)
 - Update service worker version

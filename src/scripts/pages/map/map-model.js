@@ -2,7 +2,7 @@
  * MapModel - Model for Map Page
  * Handles data fetching for story map with IndexedDB caching
  */
-import idbHelper from '../../utils/idb-helper.js';
+import idbHelper from "../../utils/idb-helper.js";
 
 class MapModel {
   constructor() {
@@ -11,15 +11,15 @@ class MapModel {
     this.storiesWithoutLocation = [];
     this.bearerToken = null;
     this.isOnline = navigator.onLine;
-    
+
     // Listen for online/offline events
-    window.addEventListener('online', () => {
-      console.log('App is online');
+    window.addEventListener("online", () => {
+      console.log("App is online");
       this.isOnline = true;
     });
-    
-    window.addEventListener('offline', () => {
-      console.log('App is offline');
+
+    window.addEventListener("offline", () => {
+      console.log("App is offline");
       this.isOnline = false;
     });
   }
@@ -68,7 +68,7 @@ class MapModel {
         // Store in IndexedDB for offline access
         if (fetchedStories.length > 0) {
           await idbHelper.saveStories(fetchedStories);
-          console.log('Stories saved to IndexedDB');
+          console.log("Stories saved to IndexedDB");
         }
 
         // Store based on location parameter
@@ -82,8 +82,11 @@ class MapModel {
 
         return fetchedStories;
       } catch (networkError) {
-        console.warn('Network request failed, trying IndexedDB cache:', networkError);
-        
+        console.warn(
+          "Network request failed, trying IndexedDB cache:",
+          networkError
+        );
+
         // If network fails, try to get from IndexedDB
         if (locationParam === 1) {
           const cachedStories = await idbHelper.getStoriesWithLocation();
@@ -147,7 +150,7 @@ class MapModel {
       console.log(`Story ${storyId} deleted from cache`);
       return true;
     } catch (error) {
-      console.error('Error deleting story from cache:', error);
+      console.error("Error deleting story from cache:", error);
       throw error;
     }
   }
@@ -158,10 +161,10 @@ class MapModel {
   async clearCache() {
     try {
       await idbHelper.clearAllStories();
-      console.log('All cached stories cleared');
+      console.log("All cached stories cleared");
       return true;
     } catch (error) {
-      console.error('Error clearing cache:', error);
+      console.error("Error clearing cache:", error);
       throw error;
     }
   }
@@ -173,7 +176,7 @@ class MapModel {
     try {
       return await idbHelper.getStoryCount();
     } catch (error) {
-      console.error('Error getting cached story count:', error);
+      console.error("Error getting cached story count:", error);
       return 0;
     }
   }
@@ -184,7 +187,6 @@ class MapModel {
   isOffline() {
     return !this.isOnline;
   }
-
 
   //Ini fitur untuk menambakan story
   // KRITERIA 3
