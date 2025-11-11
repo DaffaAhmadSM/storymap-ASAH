@@ -26,6 +26,7 @@ class MapPresenter {
     this.view.initAddStoryModal(this.handleAddStory.bind(this));
     this.view.initSidebarToggle();
     this.view.onShowStoryDetail = this.handleShowStoryDetail.bind(this);
+    this.view.onNotification = this.showNotification.bind(this);
   }
 
   async loadStories() {
@@ -150,6 +151,30 @@ class MapPresenter {
     } else {
       console.error("Story not found:", storyId);
     }
+  }
+
+  showNotification({ type, message }) {
+    // Create toast notification
+    const toast = document.createElement("div");
+    toast.className = `toast-notification toast-${type}`;
+    toast.textContent = message;
+    toast.setAttribute("role", "alert");
+    toast.setAttribute("aria-live", "polite");
+
+    document.body.appendChild(toast);
+
+    // Trigger animation
+    setTimeout(() => {
+      toast.classList.add("show");
+    }, 10);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => {
+        document.body.removeChild(toast);
+      }, 300);
+    }, 3000);
   }
 
   destroy() {

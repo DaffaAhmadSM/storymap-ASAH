@@ -961,6 +961,14 @@ class MapView {
               story.createdAt
             }">${createdDate}</time></small>
           </div>
+          <button 
+            class="story-bookmark-btn" 
+            data-story-id="${story.id}"
+            aria-label="Bookmark this story"
+            title="Bookmark"
+          >
+            <span class="bookmark-icon">☆</span>
+          </button>
         </article>
       </li>
     `;
@@ -969,11 +977,19 @@ class MapView {
   /**
    * Attach click listeners to story list items
    */
-  attachStoryListListeners() {
+  async attachStoryListListeners() {
     const storyItems = document.querySelectorAll(".story-list-item");
+
+    // Update bookmark button states
+    await this.updateBookmarkButtonStates();
+
     storyItems.forEach((item) => {
-      // Click event
-      item.addEventListener("click", () => {
+      // Click event for story item (excluding bookmark button)
+      item.addEventListener("click", (e) => {
+        // Don't trigger if clicking bookmark button
+        if (e.target.closest(".story-bookmark-btn")) {
+          return;
+        }
         const storyId = item.dataset.storyId;
         const hasLocation = item.dataset.hasLocation === "true";
         this.handleStoryItemClick(storyId, hasLocation);
@@ -989,6 +1005,110 @@ class MapView {
         }
       });
     });
+
+    // Attach bookmark button listeners
+    const bookmarkBtns = document.querySelectorAll(".story-bookmark-btn");
+    bookmarkBtns.forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation(); // Prevent triggering story item click
+        const storyId = btn.dataset.storyId;
+        await this.toggleBookmarkFromList(storyId);
+      });
+    });
+  }
+
+  /**
+   * Update bookmark button states based on IndexedDB
+   */
+  async updateBookmarkButtonStates() {
+    const bookmarkBtns = document.querySelectorAll(".story-bookmark-btn");
+
+    for (const btn of bookmarkBtns) {
+      const storyId = btn.dataset.storyId;
+      const isBookmarked = await idbHelper.isBookmarked(storyId);
+
+      if (isBookmarked) {
+        btn.classList.add("bookmarked");
+        btn.querySelector(".bookmark-icon").textContent = "★";
+        btn.setAttribute("aria-label", "Remove bookmark");
+        btn.setAttribute("title", "Remove from bookmarks");
+      } else {
+        btn.classList.remove("bookmarked");
+        btn.querySelector(".bookmark-icon").textContent = "☆";
+        btn.setAttribute("aria-label", "Bookmark this story");
+        btn.setAttribute("title", "Bookmark");
+      }
+    }
+  }
+
+  /**
+   * Toggle bookmark from story list
+   */
+  async toggleBookmarkFromList(storyId) {
+    try {
+      // Get the full story data
+      const story = await idbHelper.getStoryById(storyId);
+      if (!story) {
+        console.error("Story not found:", storyId);
+        return;
+      }
+
+      const isCurrentlyBookmarked = await idbHelper.isBookmarked(storyId);
+      const bookmarkBtn = document.querySelector(
+        `.story-bookmark-btn[data-story-id="${storyId}"]`
+      );
+
+      if (isCurrentlyBookmarked) {
+        // Remove bookmark
+        await idbHelper.removeBookmark(storyId);
+
+        if (bookmarkBtn) {
+          bookmarkBtn.classList.remove("bookmarked");
+          bookmarkBtn.querySelector(".bookmark-icon").textContent = "☆";
+          bookmarkBtn.setAttribute("aria-label", "Bookmark this story");
+          bookmarkBtn.setAttribute("title", "Bookmark");
+        }
+
+        // Show notification
+        if (this.onNotification) {
+          this.onNotification({
+            type: "info",
+            message: "Story removed from bookmarks",
+          });
+        }
+      } else {
+        // Add bookmark
+        await idbHelper.addBookmark(story);
+
+        if (bookmarkBtn) {
+          bookmarkBtn.classList.add("bookmarked");
+          bookmarkBtn.querySelector(".bookmark-icon").textContent = "★";
+          bookmarkBtn.setAttribute("aria-label", "Remove bookmark");
+          bookmarkBtn.setAttribute("title", "Remove from bookmarks");
+        }
+
+        // Show notification
+        if (this.onNotification) {
+          this.onNotification({
+            type: "success",
+            message: "Story bookmarked and saved to IndexedDB",
+          });
+        }
+      }
+
+      // Refresh bookmarks if we're viewing the bookmarks list
+      if (this.onBookmarksUpdated) {
+        this.onBookmarksUpdated();
+      }
+    } catch (error) {
+      console.error("Error toggling bookmark:", error);
+      if (this.onNotification) {
+        this.onNotification({
+          type: "error",
+          message: "Failed to toggle bookmark",
+        });
+      }
+    }
   }
 
   /**
@@ -1183,7 +1303,7 @@ class MapView {
   /**
    * Display story detail in modal
    */
-  displayStoryDetail(story) {
+  async displayStoryDetail(story) {
     const modal = this.getStoryDetailModal();
     if (!modal) return;
 
@@ -1192,12 +1312,31 @@ class MapView {
     const description = story.description || "No description available";
     const createdAt = new Date(story.createdAt).toLocaleString();
 
+    // Check if story is bookmarked
+    const isBookmarked = await idbHelper.isBookmarked(story.id);
+
     const content = modal.querySelector(".modal-content");
     if (content) {
       content.innerHTML = `
         <header class="modal-header">
           <h2 id="story-detail-title">${this.escapeHtml(name)}</h2>
-          <button class="close-btn" id="close-detail-modal" aria-label="Close story details">&times;</button>
+          <div class="modal-header-actions">
+            <button 
+              class="bookmark-btn ${isBookmarked ? "bookmarked" : ""}" 
+              id="bookmark-btn" 
+              data-story-id="${story.id}"
+              aria-label="${isBookmarked ? "Remove bookmark" : "Add bookmark"}"
+              title="${
+                isBookmarked ? "Remove from bookmarks" : "Add to bookmarks"
+              }"
+            >
+              <span class="bookmark-icon">${isBookmarked ? "★" : "☆"}</span>
+              <span class="bookmark-text">${
+                isBookmarked ? "Bookmarked" : "Bookmark"
+              }</span>
+            </button>
+            <button class="close-btn" id="close-detail-modal" aria-label="Close story details">&times;</button>
+          </div>
         </header>
         <article class="story-detail-content" aria-labelledby="story-detail-title">
           <img 
@@ -1221,6 +1360,17 @@ class MapView {
 
     modal.style.display = "flex";
     modal.setAttribute("aria-hidden", "false");
+
+    // Store current story for bookmark toggle
+    this.currentDetailStory = story;
+
+    // Attach bookmark button listener
+    const bookmarkBtn = document.getElementById("bookmark-btn");
+    if (bookmarkBtn) {
+      bookmarkBtn.addEventListener("click", () => {
+        this.toggleBookmark(story);
+      });
+    }
 
     // Focus on modal for accessibility
     const closeBtn = document.getElementById("close-detail-modal");
@@ -1256,6 +1406,113 @@ class MapView {
     if (modal) {
       modal.style.display = "none";
       modal.setAttribute("aria-hidden", "true");
+    }
+    this.currentDetailStory = null;
+  }
+
+  /**
+   * Toggle bookmark for a story
+   */
+  async toggleBookmark(story) {
+    try {
+      const isCurrentlyBookmarked = await idbHelper.isBookmarked(story.id);
+      const bookmarkBtn = document.getElementById("bookmark-btn");
+
+      if (isCurrentlyBookmarked) {
+        // Remove bookmark
+        await idbHelper.removeBookmark(story.id);
+
+        if (bookmarkBtn) {
+          bookmarkBtn.classList.remove("bookmarked");
+          bookmarkBtn.querySelector(".bookmark-icon").textContent = "☆";
+          bookmarkBtn.querySelector(".bookmark-text").textContent = "Bookmark";
+          bookmarkBtn.setAttribute("aria-label", "Add bookmark");
+          bookmarkBtn.setAttribute("title", "Add to bookmarks");
+        }
+
+        // Show notification
+        if (this.onNotification) {
+          this.onNotification({
+            type: "info",
+            message: "Story removed from bookmarks",
+          });
+        }
+      } else {
+        // Add bookmark
+        await idbHelper.addBookmark(story);
+
+        if (bookmarkBtn) {
+          bookmarkBtn.classList.add("bookmarked");
+          bookmarkBtn.querySelector(".bookmark-icon").textContent = "★";
+          bookmarkBtn.querySelector(".bookmark-text").textContent =
+            "Bookmarked";
+          bookmarkBtn.setAttribute("aria-label", "Remove bookmark");
+          bookmarkBtn.setAttribute("title", "Remove from bookmarks");
+        }
+
+        // Show notification
+        if (this.onNotification) {
+          this.onNotification({
+            type: "success",
+            message: "Story bookmarked and saved to IndexedDB",
+          });
+        }
+      }
+
+      // Refresh bookmarks if we're viewing the bookmarks list
+      if (this.onBookmarksUpdated) {
+        this.onBookmarksUpdated();
+      }
+    } catch (error) {
+      console.error("Error toggling bookmark:", error);
+      if (this.onNotification) {
+        this.onNotification({
+          type: "error",
+          message: "Failed to toggle bookmark",
+        });
+      }
+    }
+  }
+
+  /**
+   * Render bookmarked stories in sidebar
+   */
+  async renderBookmarkedStories() {
+    const sidebar = this.getStoryListSidebar();
+    if (!sidebar) return;
+
+    try {
+      const bookmarks = await idbHelper.getAllBookmarks();
+
+      let html =
+        '<button id="toggle-sidebar-btn" class="toggle-sidebar-btn" title="Toggle bookmarks sidebar" aria-label="Toggle bookmarks sidebar" aria-expanded="true" aria-controls="story-list-sidebar-id">✕</button>';
+      html += '<div class="story-list-content">';
+      html += "<h3>Bookmarked Stories</h3>";
+
+      if (bookmarks && bookmarks.length > 0) {
+        html +=
+          '<section class="story-section" aria-label="Bookmarked stories">';
+        html += `<h4><span class="location-icon" aria-hidden="true">★</span>Saved (${bookmarks.length})</h4>`;
+        html += '<ul role="list" class="story-list">';
+        bookmarks.forEach((story) => {
+          html += this.createStoryListItem(story);
+        });
+        html += "</ul>";
+        html += "</section>";
+      } else {
+        html +=
+          '<p class="no-stories" role="status">No bookmarked stories yet</p>';
+        html +=
+          '<p class="no-stories-hint">Bookmark stories from the map or story list to save them here</p>';
+      }
+
+      html += "</div>";
+      sidebar.innerHTML = html;
+
+      // Add click listeners
+      this.attachStoryListListeners();
+    } catch (error) {
+      console.error("Error rendering bookmarked stories:", error);
     }
   }
 

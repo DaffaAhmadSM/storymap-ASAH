@@ -1621,10 +1621,63 @@ body {
     border-bottom: 2px solid #ecf0f1;
 }
 
+.modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .modal-header h2 {
     margin: 0;
     color: #2c3e50;
     font-size: 1.6rem;
+}
+
+/* Bookmark Button in Modal */
+.bookmark-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background-color: #f8f9fa;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #555;
+}
+
+.bookmark-btn:hover {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    transform: translateY(-2px);
+}
+
+.bookmark-btn.bookmarked {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #fff;
+}
+
+.bookmark-btn .bookmark-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.bookmark-btn.bookmarked .bookmark-icon {
+    color: #fff;
+    animation: bookmarkPulse 0.3s ease;
+}
+
+@keyframes bookmarkPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
 }
 
 .close-btn {
@@ -2098,6 +2151,7 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     border: 2px solid transparent;
+    position: relative;
 }
 
 .story-list-item:hover {
@@ -2118,6 +2172,46 @@ body {
 
 .story-list-item:active {
     background-color: #d1e9ff;
+}
+
+/* Bookmark Button in Story List */
+.story-bookmark-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.story-bookmark-btn:hover {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    transform: scale(1.1);
+}
+
+.story-bookmark-btn.bookmarked {
+    background-color: #ffc107;
+    border-color: #ffc107;
+}
+
+.story-bookmark-btn .bookmark-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+    color: #666;
+}
+
+.story-bookmark-btn.bookmarked .bookmark-icon {
+    color: #fff;
+    animation: bookmarkPulse 0.3s ease;
 }
 
 .story-thumb {
@@ -3349,5 +3443,61 @@ body {
 
     .about-section.cta p {
         font-size: 1rem;
+    }
+}
+
+/* Toast Notifications for Bookmark Actions */
+.toast-notification {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 0.95rem;
+    font-weight: 500;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    max-width: 350px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toast-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success {
+    background-color: #28a745;
+    color: #ffffff;
+}
+
+.toast-info {
+    background-color: #17a2b8;
+    color: #ffffff;
+}
+
+.toast-error {
+    background-color: #dc3545;
+    color: #ffffff;
+}
+
+.toast-warning {
+    background-color: #ffc107;
+    color: #333;
+}
+
+@media (max-width: 768px) {
+    .toast-notification {
+        bottom: 60px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+        font-size: 0.85rem;
+        padding: 12px 16px;
     }
 }

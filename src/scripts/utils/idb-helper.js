@@ -4,9 +4,10 @@
  */
 
 const DB_NAME = "story-map-db";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = "stories";
 const PENDING_STORE_NAME = "pending-stories";
+const BOOKMARKS_STORE_NAME = "bookmarks";
 
 /**
  * Open or create the IndexedDB database
@@ -58,6 +59,19 @@ function openDatabase() {
         pendingStore.createIndex("status", "status", { unique: false });
 
         console.log("IndexedDB pending-stories object store created");
+      }
+
+      // Create bookmarks object store
+      if (!db.objectStoreNames.contains(BOOKMARKS_STORE_NAME)) {
+        const bookmarksStore = db.createObjectStore(BOOKMARKS_STORE_NAME, {
+          keyPath: "id",
+        });
+
+        bookmarksStore.createIndex("bookmarkedAt", "bookmarkedAt", {
+          unique: false,
+        });
+
+        console.log("IndexedDB bookmarks object store created");
       }
     };
   });
@@ -696,6 +710,157 @@ async function getPendingCount() {
   }
 }
 
+/**
+ * Add a story to bookmarks
+ */
+async function addBookmark(story) {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([BOOKMARKS_STORE_NAME], "readwrite");
+      const objectStore = transaction.objectStore(BOOKMARKS_STORE_NAME);
+
+      const bookmarkData = {
+        ...story,
+        bookmarkedAt: new Date().toISOString(),
+      };
+
+      const request = objectStore.put(bookmarkData);
+
+      request.onsuccess = () => {
+        resolve(bookmarkData);
+      };
+
+      request.onerror = () => {
+        reject(new Error("Failed to add bookmark"));
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error("Error adding bookmark:", error);
+    throw error;
+  }
+}
+
+/**
+ * Remove a story from bookmarks
+ */
+async function removeBookmark(storyId) {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([BOOKMARKS_STORE_NAME], "readwrite");
+      const objectStore = transaction.objectStore(BOOKMARKS_STORE_NAME);
+      const request = objectStore.delete(storyId);
+
+      request.onsuccess = () => {
+        resolve(true);
+      };
+
+      request.onerror = () => {
+        reject(new Error("Failed to remove bookmark"));
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error("Error removing bookmark:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all bookmarked stories
+ */
+async function getAllBookmarks() {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([BOOKMARKS_STORE_NAME], "readonly");
+      const objectStore = transaction.objectStore(BOOKMARKS_STORE_NAME);
+      const request = objectStore.getAll();
+
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+
+      request.onerror = () => {
+        reject(new Error("Failed to retrieve bookmarks"));
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error("Error retrieving bookmarks:", error);
+    return [];
+  }
+}
+
+/**
+ * Check if a story is bookmarked
+ */
+async function isBookmarked(storyId) {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([BOOKMARKS_STORE_NAME], "readonly");
+      const objectStore = transaction.objectStore(BOOKMARKS_STORE_NAME);
+      const request = objectStore.get(storyId);
+
+      request.onsuccess = () => {
+        resolve(request.result !== undefined);
+      };
+
+      request.onerror = () => {
+        reject(new Error("Failed to check bookmark status"));
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error("Error checking bookmark status:", error);
+    return false;
+  }
+}
+
+/**
+ * Get bookmark count
+ */
+async function getBookmarkCount() {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([BOOKMARKS_STORE_NAME], "readonly");
+      const objectStore = transaction.objectStore(BOOKMARKS_STORE_NAME);
+      const request = objectStore.count();
+
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+
+      request.onerror = () => {
+        reject(new Error("Failed to count bookmarks"));
+      };
+
+      transaction.oncomplete = () => {
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error("Error counting bookmarks:", error);
+    return 0;
+  }
+}
+
 export default {
   openDatabase,
   saveStory,
@@ -719,4 +884,10 @@ export default {
   updatePendingStory,
   deletePendingStory,
   getPendingCount,
+  // Bookmarks
+  addBookmark,
+  removeBookmark,
+  getAllBookmarks,
+  isBookmarked,
+  getBookmarkCount,
 };
