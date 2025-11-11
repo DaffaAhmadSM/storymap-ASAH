@@ -886,6 +886,8 @@ class MapView {
       '    <button class="filter-btn" data-filter="with-location">With Location</button>';
     html +=
       '    <button class="filter-btn" data-filter="without-location">No Location</button>';
+    html +=
+      '    <button class="filter-btn" data-filter="bookmarked">★ Bookmarked</button>';
     html += "  </div>";
     html += '  <div class="sort-box">';
     html += '    <label for="story-sort">Sort: </label>';
@@ -1100,6 +1102,11 @@ class MapView {
       if (this.onBookmarksUpdated) {
         this.onBookmarksUpdated();
       }
+
+      // Refresh filtered view if bookmarked filter is active
+      if (this.currentFilter === "bookmarked") {
+        await this.updateFilteredStories();
+      }
     } catch (error) {
       console.error("Error toggling bookmark:", error);
       if (this.onNotification) {
@@ -1157,6 +1164,29 @@ class MapView {
    */
   async updateFilteredStories() {
     try {
+      // Handle bookmarked filter separately
+      if (this.currentFilter === "bookmarked") {
+        const bookmarkedStories = await idbHelper.getAllBookmarks();
+
+        // Apply search filter if needed
+        let filteredBookmarks = bookmarkedStories;
+        if (this.searchQuery) {
+          filteredBookmarks = bookmarkedStories.filter((story) => {
+            const name = (story.name || "").toLowerCase();
+            const description = (story.description || "").toLowerCase();
+            return (
+              name.includes(this.searchQuery) ||
+              description.includes(this.searchQuery)
+            );
+          });
+        }
+
+        // Apply sorting
+        this.sortStories(filteredBookmarks);
+        this.renderFilteredStories(filteredBookmarks);
+        return;
+      }
+
       // Determine hasLocation filter
       let hasLocation = null;
       if (this.currentFilter === "with-location") {
@@ -1199,6 +1229,21 @@ class MapView {
   }
 
   /**
+   * Sort stories array in place
+   */
+  sortStories(stories) {
+    if (this.currentSort === "newest") {
+      stories.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } else if (this.currentSort === "oldest") {
+      stories.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    } else if (this.currentSort === "name-asc") {
+      stories.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else if (this.currentSort === "name-desc") {
+      stories.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+    }
+  }
+
+  /**
    * Render only the filtered stories section
    */
   renderFilteredStories(stories) {
@@ -1207,9 +1252,24 @@ class MapView {
 
     let html = "";
 
+    // Determine heading based on current filter
+    let headingIcon = "📖";
+    let headingText = "All Stories";
+
+    if (this.currentFilter === "bookmarked") {
+      headingIcon = "★";
+      headingText = "Bookmarked Stories";
+    } else if (this.currentFilter === "with-location") {
+      headingIcon = "📍";
+      headingText = "Stories with Location";
+    } else if (this.currentFilter === "without-location") {
+      headingIcon = "📝";
+      headingText = "Stories without Location";
+    }
+
     if (stories && stories.length > 0) {
       html += '<section class="story-section" aria-label="Filtered stories">';
-      html += `<h4><span class="location-icon" aria-hidden="true">📖</span>All Stories (${stories.length})</h4>`;
+      html += `<h4><span class="location-icon" aria-hidden="true">${headingIcon}</span>${headingText} (${stories.length})</h4>`;
       html += '<ul role="list" class="story-list">';
       stories.forEach((story) => {
         html += this.createStoryListItem(story);
@@ -1217,8 +1277,11 @@ class MapView {
       html += "</ul>";
       html += "</section>";
     } else {
-      html +=
-        '<p class="no-stories" role="status">No stories match your filters</p>';
+      const emptyMessage =
+        this.currentFilter === "bookmarked"
+          ? "No bookmarked stories yet. Click the star icon on any story to bookmark it!"
+          : "No stories match your filters";
+      html += `<p class="no-stories" role="status">${emptyMessage}</p>`;
     }
 
     container.innerHTML = html;
@@ -1462,6 +1525,11 @@ class MapView {
       // Refresh bookmarks if we're viewing the bookmarks list
       if (this.onBookmarksUpdated) {
         this.onBookmarksUpdated();
+      }
+
+      // Refresh filtered view if bookmarked filter is active
+      if (this.currentFilter === "bookmarked") {
+        await this.updateFilteredStories();
       }
     } catch (error) {
       console.error("Error toggling bookmark:", error);
